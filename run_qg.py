@@ -1,4 +1,3 @@
-import dataclasses
 import json
 import logging
 import os
@@ -6,6 +5,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+import pandas as pd
 import numpy as np
 import torch
 
@@ -36,32 +36,40 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ModelArguments:
     """
-    Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
+    Arguments pertaining to which model/config/tokenizer we are going to
+    fine-tune from.
     """
 
     model_name_or_path: str = field(
-        metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
+        metadata={"help": "Path to pretrained model or model identifier \
+            from huggingface.co/models"}
     )
     model_type: str = field(metadata={"help": "One of 't5', 'bart'"})
     tokenizer_name_or_path: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
+        default=None, metadata={"help": "Pretrained tokenizer name or path if \
+        not the same as model_name"}
     )
     cache_dir: Optional[str] = field(
-        default=None, metadata={"help": "Where do you want to store the pretrained models downloaded from s3"}
+        default=None, metadata={"help": "Where do you want to store the \
+        pretrained models downloaded from s3"}
     )
     label_smoothing: Optional[float] = field(
         default=0,
-        metadata={"help": "label smoothing rate, set to > 0 if you want to enable lable smoothing"}
+        metadata={"help": "label smoothing rate, set to > 0 if you want to \
+        enable lable smoothing"}
     )
     freeze_embeds: bool = field(
         default=False,
-        metadata={"help": "Freeze token embeddings and positional embeddings for bart, just token embeddings for t5."}
+        metadata={"help": "Freeze token embeddings and positional embeddings \
+        for bart, just token embeddings for t5."}
     )
+
 
 @dataclass
 class DataTrainingArguments:
     """
-    Arguments pertaining to what data we are going to input our model for training and eval.
+    Arguments pertaining to what data we are going to input our model for
+    training and eval.
     """
     train_file_path: str = field(
         metadata={"help": "Path for cached train dataset"},
@@ -71,15 +79,17 @@ class DataTrainingArguments:
     )
     data_dir: Optional[str] = field(
         default=None,
-        metadata={"help": "Path for data files"}, 
+        metadata={"help": "Path for data files"},
     )
     task: Optional[str] = field(
         default=None,
-        metadata={"help": "Which task 'qa', 'qg', 'e2e_qg', 'ans_ext', 'multi'. 'multi' means 'qa', 'qg', 'ans_ext' tasks"}, 
+        metadata={"help": "Which task 'qa', 'qg', 'e2e_qg', 'ans_ext', \
+        'multi'. 'multi' means 'qa', 'qg', 'ans_ext' tasks"},
     )
     qg_format: Optional[str] = field(
         default='prepend_qg_format',
-        metadata={"help": "How to format inputs for que generation, 'highlight_qg_format' or 'prepend_qg_format'"}, 
+        metadata={"help": "How to format inputs for que generation, \
+        'highlight_qg_format' or 'prepend_qg_format'"},
     )
     max_source_length: Optional[int] = field(
         default=512,
@@ -96,7 +106,9 @@ def main(args_file=None):
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser((ModelArguments,
+                               DataTrainingArguments,
+                               TrainingArguments))
 
     if (len(sys.argv) == 2 and sys.argv[1].endswith(".json")) or args_file is not None:
         # If we pass only one argument to the script and it's the path to a json file,
@@ -115,7 +127,8 @@ def main(args_file=None):
         and not training_args.overwrite_output_dir
     ):
         raise ValueError(
-            f"Output directory ({training_args.output_dir}) already exists and is not empty. Use --overwrite_output_dir to overcome."
+            f"Output directory ({training_args.output_dir}) already exists \
+            and is not empty. Use --overwrite_output_dir to overcome."
         )
 
     # Setup logging
@@ -125,7 +138,8 @@ def main(args_file=None):
         level=logging.INFO if training_args.local_rank in [-1, 0] else logging.WARN,
     )
     logger.warning(
-        "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
+        "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, \
+        16-bits training: %s",
         training_args.local_rank,
         training_args.device,
         training_args.n_gpu,
@@ -143,8 +157,8 @@ def main(args_file=None):
     # Load pretrained model and tokenizer
     #
     # Distributed training:
-    # The .from_pretrained methods guarantee that only one local process can concurrently
-    # download model & vocab.
+    # The .from_pretrained methods guarantee that only one local process can
+    # concurrently download model & vocab.
     tokenizer_cls = MODEL_TYPE_TO_TOKENIZER[model_args.model_type]
     tokenizer = tokenizer_cls.from_pretrained(
         model_args.tokenizer_name_or_path if model_args.tokenizer_name_or_path else model_args.model_name_or_path,
@@ -164,10 +178,16 @@ def main(args_file=None):
 
     # Get datasets
     logger.info('loading dataset')
-    
+
     train_dataset = torch.load(data_args.train_file_path) if training_args.do_train else None
     valid_dataset = torch.load(data_args.valid_file_path) if training_args.do_eval else None
-    
+
+    # train_dataset = train_dataset.map(add_eos_to_examples)
+    # train_dataset = train_dataset.map(convert_to_features, batched=True)
+    #
+    # valid_dataset = valid_dataset.map(add_eos_to_examples)
+    # valid_dataset = valid_dataset.map(convert_to_features, batched=True)
+
     logger.info('finished loading dataset')
 
     # Initialize data_collator
@@ -185,7 +205,7 @@ def main(args_file=None):
         train_dataset=train_dataset,
         eval_dataset=valid_dataset,
         data_collator=data_collator,
-        prediction_loss_only=True,
+        # prediction_loss_only=True,
         label_smoothing=model_args.label_smoothing
     )
 
@@ -200,7 +220,7 @@ def main(args_file=None):
         trainer.save_model()
         # For convenience, we also re-save the tokenizer to the same directory,
         # so that you can share your model easily on huggingface.co/models =)
-        if trainer.is_world_master():
+        if trainer.is_world_process_zero():
             tokenizer.save_pretrained(training_args.output_dir)
 
     # Evaluation
@@ -210,15 +230,17 @@ def main(args_file=None):
 
         eval_output = trainer.evaluate()
 
-        output_eval_file = os.path.join(training_args.output_dir, "eval_results.txt")
+        output_eval_file = os.path.join(training_args.output_dir,
+                                        "eval_results.txt")
+
         with open(output_eval_file, "w") as writer:
             logger.info("***** Eval results *****")
             for key in sorted(eval_output.keys()):
                 logger.info("  %s = %s", key, str(eval_output[key]))
                 writer.write("%s = %s\n" % (key, str(eval_output[key])))
-    
+
         results.update(eval_output)
-    
+
     return results
 
 
@@ -226,11 +248,13 @@ def _mp_fn(index):
     # For xla_spawn (TPUs)
     main()
 
+
 def run_qg(args_dict):
     with open("args.json", 'w') as f:
         json.dump(args_dict, f)
-    
+
     main(args_file="args.json")
+
 
 if __name__ == "__main__":
     main()

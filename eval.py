@@ -12,17 +12,20 @@ device = 'cuda' if torch.cuda.is_available else 'cpu'
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class EvalArguments:
     model_name_or_path: str = field(
-        metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
+        metadata={"help": "Path to pretrained model or model identifier from \
+        huggingface.co/models"}
     )
     valid_file_path: str = field(
         metadata={"help": "Path for cached valid dataset"}
     )
     model_type: str = field(metadata={"help": "One of 't5', 'bart'"})
     tokenizer_name_or_path: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
+        default=None, metadata={"help": "Pretrained tokenizer name or path if \
+        not the same as model_name"}
     )
     num_beams: Optional[int] = field(
         default=4,
@@ -37,25 +40,29 @@ class EvalArguments:
         metadata={"help": "path to save the generated questions."}
     )
 
-def get_predictions(model, tokenizer, data_loader, num_beams=4, max_length=32, length_penalty=1):
+
+def get_predictions(model, tokenizer, data_loader, num_beams=4, max_length=32,
+                    length_penalty=1):
     model.to(device)
-    
+
     predictions = []
     model.eval()
     with torch.no_grad():
         for batch in tqdm(data_loader):
             outs = model.generate(
-                input_ids=batch['input_ids'].to(device), 
+                input_ids=batch['input_ids'].to(device),
                 attention_mask=batch['attention_mask'].to(device),
                 num_beams=num_beams,
                 max_length=max_length,
                 length_penalty=length_penalty,
             )
 
-            prediction = [tokenizer.decode(ids, skip_special_tokens=True) for ids in outs]
+            prediction = [tokenizer.decode(ids, skip_special_tokens=True)
+                          for ids in outs]
             predictions.extend(prediction)
 
     return predictions
+
 
 def main():
     parser = HfArgumentParser((EvalArguments,))
@@ -72,7 +79,9 @@ def main():
         model_type=args.model_type,
         mode="inference"
     )
-    loader = torch.utils.data.DataLoader(valid_dataset, batch_size=32, collate_fn=collator)
+    loader = torch.utils.data.DataLoader(valid_dataset,
+                                         batch_size=32,
+                                         collate_fn=collator)
 
     predictions = get_predictions(
         model=model,
@@ -84,7 +93,7 @@ def main():
 
     with open(args.output_path, 'w') as f:
         f.write("\n".join(predictions))
-    
+
     logging.info(f"Output saved at {args.output_path}")
 
 
