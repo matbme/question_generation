@@ -1,3 +1,4 @@
+import re
 import itertools
 import logging
 from typing import Optional, Dict, Union
@@ -54,7 +55,7 @@ class QGPipeline:
         flat_answers = list(itertools.chain(*answers))
 
         if len(flat_answers) == 0:
-          return []
+            return []
 
         if self.qg_format == "prepend":
             qg_examples = self._prepare_inputs_for_qg_from_answers_prepend(inputs, answers)
@@ -96,12 +97,12 @@ class QGPipeline:
         return sents, answers
 
     def _tokenize(self,
-        inputs,
-        padding=True,
-        truncation=True,
-        add_special_tokens=True,
-        max_length=512
-    ):
+                  inputs,
+                  padding=True,
+                  truncation=True,
+                  add_special_tokens=True,
+                  max_length=512
+                  ):
         inputs = self.tokenizer.batch_encode_plus(
             inputs,
             max_length=max_length,
@@ -131,17 +132,28 @@ class QGPipeline:
 
         return sents, inputs
 
+    def _clean(self, text: str) -> str:
+        return re.sub(r'\<[/a-z]+\>', r'', text)
+
     def _prepare_inputs_for_qg_from_answers_hl(self, sents, answers):
         inputs = []
         for i, answer in enumerate(answers):
-            if len(answer) == 0: continue
+            if len(answer) == 0:
+                continue
             for answer_text in answer:
                 sent = sents[i]
                 sents_copy = sents[:]
 
+                answer_text = self._clean(answer_text)
+
                 answer_text = answer_text.strip()
 
-                ans_start_idx = sent.index(answer_text)
+                # Answer may be lowercased
+                try:
+                    ans_start_idx = sent.index(answer_text)
+                except ValueError:
+                    answer_text = answer_text.lower()
+                    ans_start_idx = sent.index(answer_text)
 
                 sent = f"{sent[:ans_start_idx]} <hl> {answer_text} <hl> {sent[ans_start_idx + len(answer_text): ]}"
                 sents_copy[i] = sent
@@ -205,7 +217,7 @@ class E2EQGPipeline:
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizer,
         use_cuda: bool
-    ) :
+    ):
 
         self.model = model
         self.tokenizer = tokenizer
@@ -336,7 +348,8 @@ def pipeline(
             # Impossible to guest what is the right tokenizer here
             raise Exception(
                 "Impossible to guess which tokenizer to use. "
-                "Please provided a PretrainedTokenizer class or a path/identifier to a pretrained tokenizer."
+                "Please provided a PretrainedTokenizer class or a \
+                path/identifier to a pretrained tokenizer."
             )
 
     # Instantiate tokenizer if needed
@@ -366,7 +379,8 @@ def pipeline(
                     # Impossible to guest what is the right tokenizer here
                     raise Exception(
                         "Impossible to guess which tokenizer to use. "
-                        "Please provided a PretrainedTokenizer class or a path/identifier to a pretrained tokenizer."
+                        "Please provided a PretrainedTokenizer class or a \
+                        path/identifier to a pretrained tokenizer."
                     )
 
             # Instantiate tokenizer if needed

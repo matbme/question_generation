@@ -22,6 +22,7 @@ class DataTrainingArguments:
             'multi'. 'multi' means 'qa', 'qg', 'ans_ext' tasks"},
     )
     model_type: str = field(metadata={"help": "One of 't5', 'bart'"})
+    model_name: str = field(metadata={"help": "Model form HF"})
     dataset_path: Optional[str] = field(
         default="data/squad_multitask",
         metadata={"help": "Path for dataset directory"},
@@ -158,12 +159,13 @@ def main():
     )
 
     if data_args.model_type == 't5':
-        tokenizer = T5Tokenizer.from_pretrained("t5-base")
+        tokenizer = T5Tokenizer.from_pretrained(data_args.model_name)
     else:
-        tokenizer = BartTokenizer.from_pretrained("facebook/bart-base")
+        tokenizer = BartTokenizer.from_pretrained(data_args.model_name)
 
     tokenizer.add_tokens(['<sep>', '<hl>'])
 
+    print(data_args.dataset_path)
     train_dataset = nlp.load_dataset(data_args.dataset_path,
                                      name=data_args.qg_format,
                                      split=nlp.Split.TRAIN)
