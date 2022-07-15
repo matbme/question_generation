@@ -22,7 +22,7 @@ class DataTrainingArguments:
             'multi'. 'multi' means 'qa', 'qg', 'ans_ext' tasks"},
     )
     model_type: str = field(metadata={"help": "One of 't5', 'bart'"})
-    model_name: str = field(metadata={"help": "Model form HF"})
+    tokenizer: str = field(metadata={"help": "Model form HF"})
     dataset_path: Optional[str] = field(
         default="data/squad_multitask",
         metadata={"help": "Path for dataset directory"},
@@ -159,9 +159,9 @@ def main():
     )
 
     if data_args.model_type == 't5':
-        tokenizer = T5Tokenizer.from_pretrained(data_args.model_name)
+        tokenizer = T5Tokenizer.from_pretrained(data_args.tokenizer)
     else:
-        tokenizer = BartTokenizer.from_pretrained(data_args.model_name)
+        tokenizer = BartTokenizer.from_pretrained(data_args.tokenizer)
 
     tokenizer.add_tokens(['<sep>', '<hl>'])
 

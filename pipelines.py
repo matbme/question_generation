@@ -9,6 +9,7 @@ import torch
 from transformers import (
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
+    T5Tokenizer,
     PreTrainedModel,
     PreTrainedTokenizer,
 )
@@ -153,7 +154,10 @@ class QGPipeline:
                     ans_start_idx = sent.index(answer_text)
                 except ValueError:
                     answer_text = answer_text.lower()
-                    ans_start_idx = sent.index(answer_text)
+                    try:
+                        ans_start_idx = sent.index(answer_text)
+                    except Exception:
+                        continue
 
                 sent = f"{sent[:ans_start_idx]} <hl> {answer_text} <hl> {sent[ans_start_idx + len(answer_text): ]}"
                 sents_copy[i] = sent
@@ -195,7 +199,7 @@ class MultiTaskQAQGPipeline(QGPipeline):
         source_text = f"question: {question}  context: {context}"
         if self.model_type == "t5":
             source_text = source_text + " </s>"
-        return  source_text
+        return source_text
 
     def _extract_answer(self, question, context):
         source_text = self._prepare_inputs_for_qa(question, context)
@@ -356,9 +360,9 @@ def pipeline(
     if isinstance(tokenizer, (str, tuple)):
         if isinstance(tokenizer, tuple):
             # For tuple we have (tokenizer name, {kwargs})
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer[0], **tokenizer[1])
+            tokenizer = T5Tokenizer.from_pretrained(tokenizer[0], **tokenizer[1])
         else:
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+            tokenizer = T5Tokenizer.from_pretrained(tokenizer)
 
     # Instantiate model if needed
     if isinstance(model, str):
@@ -368,7 +372,7 @@ def pipeline(
         if ans_model is None:
             # load default ans model
             ans_model = targeted_task["default"]["ans_model"]
-            ans_tokenizer = AutoTokenizer.from_pretrained(ans_model)
+            ans_tokenizer = T5Tokenizer.from_pretrained(ans_model)
             ans_model = AutoModelForSeq2SeqLM.from_pretrained(ans_model)
         else:
             # Try to infer tokenizer from model or config name (if provided as str)
@@ -387,9 +391,9 @@ def pipeline(
             if isinstance(ans_tokenizer, (str, tuple)):
                 if isinstance(ans_tokenizer, tuple):
                     # For tuple we have (tokenizer name, {kwargs})
-                    ans_tokenizer = AutoTokenizer.from_pretrained(ans_tokenizer[0], **ans_tokenizer[1])
+                    ans_tokenizer = T5Tokenizer.from_pretrained(ans_tokenizer[0], **ans_tokenizer[1])
                 else:
-                    ans_tokenizer = AutoTokenizer.from_pretrained(ans_tokenizer)
+                    ans_tokenizer = T5Tokenizer.from_pretrained(ans_tokenizer)
 
             if isinstance(ans_model, str):
                 ans_model = AutoModelForSeq2SeqLM.from_pretrained(ans_model)
